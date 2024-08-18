@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: ${{ env.JAVA_VERSION }} != ''
 
     steps:
       - name: Checkout
@@ -29,8 +30,26 @@ jobs:
         run: ./gradlew test --no-daemon
       
       - name: Upload reports artifacts
-        uses: actions/upload-artifact@v4
+        # uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: reports
+          # name: reports
           path: build/reports/tests/test/
-      
+          retention-days: 3
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: reports
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
