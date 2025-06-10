@@ -1,0 +1,10 @@
+{
+    "name": "Fast Forward Workflow",
+    "description": "Support for fast-forward and merge.",
+    "categories": [
+        "Pull Requests",
+        "Merge",
+        "Fast Forward",
+        "Git"
+    ]
+}

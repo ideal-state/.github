@@ -1,0 +1,21 @@
+name: Glass Release
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+    - $default-branch
+    paths:
+    - gradle/gradle-wrapper.properties
+    - gradle.properties
+    - **.versions.toml
+    - **.gradle
+    - **.gradle.kts
+    - **/libraries/**
+    - **/src/java/**
+    - **/src/kotlin/**
+    - **/src/groovy/**
+
+jobs:
+  call:
+    uses: ideal-state/.github/workflows/glass-release.yml@master

@@ -1,0 +1,117 @@
+name: Glass Release
+
+on:
+  workflow_call: {}
+
+env:
+  JAVA_OPTS: -Xms3G -Xmx3G -Dfile.encoding=UTF-8
+  GRADLE_OPTIONS: --no-daemon --no-parallel
+
+jobs:
+  metadata:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - &checkout
+      name: Checkout branch
+      uses: actions/checkout@v4
+    - &setup-jdk
+      name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: zulu
+        java-version: '21'
+        check-latest: true
+        cache: gradle
+    - &setup-gradle
+      name: Setup Gradle
+      run: chmod u+x ./gradlew && ./gradlew ${{ env.GRADLE_OPTIONS }} --version
+    - name: Get 'CURRENT_ARTIFACT_VERSION'
+      id: current_artifact_version
+      run: echo "result=$($(pwd)/gradlew ${{ env.GRADLE_OPTIONS }} :properties | grep '^version:' | awk '{printf $2}')" >> "$GITHUB_OUTPUT"
+    - name: Get 'CURRENT_ARTIFACT_VERSION_IS_SNAPSHOT'
+      id: current_artifact_version_is_snapshot
+      run: echo "result=${{ endsWith(steps.current_artifact_version.outputs.result, '-SNAPSHOT') }}" >> "$GITHUB_OUTPUT"
+    - name: Get 'CURRENT_ARTIFACT_VERSION_CAN_BE_RELEASE'
+      id: current_artifact_version_can_be_release
+      uses: actions/github-script@v7
+      with:
+        result-encoding: boolean
+        script: |
+          if (${{ steps.current_artifact_version_is_snapshot.outputs.result }}) {
+            return false;
+          }
+          let release;
+          try {
+            release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: '${{ steps.current_artifact_version.outputs.result }}'
+            })
+          } catch (error) {
+            if (error.message == 'Not Found') {
+              release = {
+                status: '404'
+              };
+            } else {
+              throw error;
+            }
+          }
+          return release.status == '404';
+    outputs:
+      CURRENT_ARTIFACT_VERSION: ${{ steps.current_artifact_version.outputs.result }}
+      CURRENT_ARTIFACT_VERSION_IS_SNAPSHOT: ${{ steps.current_artifact_version_is_snapshot.outputs.result }}
+      CURRENT_ARTIFACT_VERSION_CAN_BE_RELEASE: ${{ steps.current_artifact_version_can_be_release.outputs.result }}
+  check:
+    needs:
+    - metadata
+    if: ${{ !needs.metadata.outputs.CURRENT_ARTIFACT_VERSION_CAN_BE_RELEASE }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - *checkout
+    - *setup-jdk
+    - *setup-gradle
+    - &run-gradle-test
+      name: Run gradle task ':check'
+      run: ./gradlew ${{ env.GRADLE_OPTIONS }} :check
+  release:
+    needs:
+    - metadata
+    if: ${{ needs.metadata.outputs.CURRENT_ARTIFACT_VERSION_CAN_BE_RELEASE }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+    - *checkout
+    - *setup-jdk
+    - *setup-gradle
+    - *run-gradle-test
+    - name: Run gradle task ':release'
+      run: ./gradlew ${{ env.GRADLE_OPTIONS }} :release
+    - name: Release to GitHub
+      uses: ncipollo/release-action@v1
+      with:
+        generateReleaseNotes: true
+        tag: ${{ needs.metadata.outputs.CURRENT_ARTIFACT_VERSION }}
+        artifacts: "./build/release/*.zip"
+    - name: Upload pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./build/release/pages/
+  deploy:
+    needs:
+    - release
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
