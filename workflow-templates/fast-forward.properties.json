@@ -1,6 +1,7 @@
 {
     "name": "Fast Forward Workflow",
     "description": "Support for fast-forward and merge.",
+    "iconName": "icon",
     "categories": [
         "Pull Requests",
         "Merge",

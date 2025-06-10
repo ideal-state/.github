@@ -1,6 +1,7 @@
 {
     "name": "Glass Release Workflow",
     "description": "Automatically release artifacts and depoly docs.",
+    "iconName": "icon",
     "categories": [
         "Java",
         "Gradle",
