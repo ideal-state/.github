@@ -1,5 +1,5 @@
 {
-    "name": "Glass Release Workflow",
+    "name": "Glass Release",
     "description": "Automatically release artifacts and depoly docs.",
     "iconName": "icon",
     "categories": [
