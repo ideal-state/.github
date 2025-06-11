@@ -96,11 +96,11 @@ jobs:
       with:
         generateReleaseNotes: true
         tag: ${{ needs.metadata.outputs.CURRENT_ARTIFACT_VERSION }}
-        artifacts: "./build/release/*.zip"
+        artifacts: "./build/releases/*.zip"
     - name: Upload pages artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: ./build/release/pages/
+        path: ./build/releases/pages/
   deploy:
     needs:
     - release
